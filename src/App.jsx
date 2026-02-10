@@ -1,213 +1,165 @@
-import React, { useState } from "react";
-import jsPDF from "jspdf";
+import { useState } from "react";
 
 export default function App() {
-
-  // ===== ADMIN SETTINGS =====
-  const ADMIN_PASSWORD = "hillchill123";
-  const UPI_ID = "sathishshanavi-4@okaxis";
-  const WHATSAPP_NUMBER = "917094853346";
-
-  // Admin controlled delivery charges
-  const [metroCharge, setMetroCharge] = useState(40);
-  const [otherCharge, setOtherCharge] = useState(80);
-
-  const metroPrefixes = ["11", "40", "56"]; 
-  // 11 = Delhi, 40 = Mumbai, 56 = Bangalore
-
-  // ===== STATE =====
   const [cart, setCart] = useState([]);
-  const [adminLogged, setAdminLogged] = useState(false);
-  const [adminPassInput, setAdminPassInput] = useState("");
-
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
   const [pincode, setPincode] = useState("");
-  const [locationNote, setLocationNote] = useState("");
+  const [address, setAddress] = useState("");
+  const [orderId, setOrderId] = useState("");
 
-  const [orders, setOrders] = useState([]);
-
-  // ===== PRODUCTS =====
   const products = [
-    { id: 1, name: "Nilgiris Leaf Tea", price: 250 },
-    { id: 2, name: "Masala Chai", price: 220 },
-    { id: 3, name: "Ooty Varkey", price: 180 },
-    { id: 4, name: "Kombu Honey", price: 450 },
+    {
+      id: 1,
+      name: "Nilgiris Herbal Tea",
+      price: 299,
+      image: "https://images.unsplash.com/photo-1515823064-d6e0c04616a7"
+    },
+    {
+      id: 2,
+      name: "Organic Turmeric Powder",
+      price: 199,
+      image: "https://images.unsplash.com/photo-1604908176997-4310c09fbcdd"
+    },
+    {
+      id: 3,
+      name: "Pure Forest Honey",
+      price: 399,
+      image: "https://images.unsplash.com/photo-1587049352846-4a222e784d38"
+    }
   ];
 
-  // ===== CART FUNCTIONS =====
-  const addToCart = (product) => setCart([...cart, product]);
-
-  const removeFromCart = (index) => {
-    const updated = [...cart];
-    updated.splice(index, 1);
-    setCart(updated);
+  const addToCart = (product) => {
+    setCart([...cart, product]);
   };
 
   const productTotal = cart.reduce((sum, item) => sum + item.price, 0);
 
-  // ===== DELIVERY CALCULATION =====
-  const isMetro = metroPrefixes.some(prefix => pincode.startsWith(prefix));
-  const deliveryCharge = pincode.length === 6
-    ? (isMetro ? metroCharge : otherCharge)
-    : 0;
+  // Metro city prefixes (Admin editable)
+  const isMetro =
+    pincode.startsWith("110") || // Delhi
+    pincode.startsWith("400") || // Mumbai
+    pincode.startsWith("560");   // Bangalore
 
-  const finalTotal = productTotal + deliveryCharge;
+  const deliveryCharge =
+    pincode.length === 6
+      ? isMetro
+        ? 40
+        : 80
+      : 0;
 
-  // ===== ORDER ID =====
+  const finalTotal =
+    productTotal > 0 ? productTotal + deliveryCharge : 0;
+
   const generateOrderId = () => {
-    return "HC" + Math.floor(100000 + Math.random() * 900000);
+    const id = "HC" + Math.floor(100000 + Math.random() * 900000);
+    setOrderId(id);
+    return id;
   };
 
-  // ===== PLACE ORDER =====
-  const handleOrder = () => {
+  const generateUPILink = () => {
+    const upiID = "sathishshanavi-4@okaxis";
+    return `upi://pay?pa=${upiID}&pn=HillChill&am=${finalTotal}&cu=INR`;
+  };
 
-    if (!name || !email || !address || pincode.length !== 6) {
-      alert("Please fill all details correctly (6-digit pincode required)");
+  const sendWhatsApp = () => {
+    if (!pincode || pincode.length !== 6) {
+      alert("Enter valid 6-digit pincode");
       return;
     }
 
-    const orderId = generateOrderId();
+    if (!address) {
+      alert("Enter delivery address");
+      return;
+    }
 
-    const newOrder = {
-      id: orderId,
-      name,
-      email,
-      address,
-      pincode,
-      total: finalTotal,
-      date: new Date().toLocaleString()
-    };
+    const newOrderId = generateOrderId();
 
-    setOrders([...orders, newOrder]);
+    const message = `🛍 Hill & Chill Order
 
-    // UPI LINK (Final Total)
-    const upiLink =
-      `upi://pay?pa=${UPI_ID}&pn=Hill%20%26%20Chill&am=${finalTotal}&cu=INR`;
+Order ID: ${newOrderId}
+Total Amount: ₹${finalTotal}
 
-    // WhatsApp Message
-    const message =
-      `Hello Hill & Chill,%0A` +
-      `Order ID: ${orderId}%0A` +
-      `Name: ${name}%0A` +
-      `Pincode: ${pincode}%0A` +
-      `Address: ${address}%0A` +
-      `Total: ₹${finalTotal}`;
+Pincode: ${pincode}
+Address: ${address}
 
-    const whatsappURL =
-      `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+Payment UPI: sathishshanavi-4@okaxis
 
-    window.open(upiLink);
-    window.open(whatsappURL);
+Thank you for shopping with us!`;
 
-    alert("Order Placed! Your Order ID: " + orderId);
-
-    setCart([]);
-  };
-
-  // ===== INVOICE =====
-  const downloadInvoice = (order) => {
-    const doc = new jsPDF();
-    doc.text("Hill & Chill Invoice", 20, 20);
-    doc.text(`Order ID: ${order.id}`, 20, 30);
-    doc.text(`Name: ${order.name}`, 20, 40);
-    doc.text(`Pincode: ${order.pincode}`, 20, 50);
-    doc.text(`Address: ${order.address}`, 20, 60);
-    doc.text(`Total: ₹${order.total}`, 20, 70);
-    doc.save(`Invoice_${order.id}.pdf`);
+    window.open(
+      `https://wa.me/919876543210?text=${encodeURIComponent(message)}`,
+      "_blank"
+    );
   };
 
   return (
-    <div style={{ padding: 20, fontFamily: "Arial" }}>
-
+    <div style={{ fontFamily: "Arial", padding: 20 }}>
       <h1>Hill & Chill</h1>
+      <h3>Premium Nilgiris Ingredients</h3>
 
-      {/* PRODUCTS */}
       <h2>Products</h2>
-      {products.map((p) => (
-        <div key={p.id}>
-          {p.name} - ₹{p.price}
-          <button onClick={() => addToCart(p)}>Add</button>
-        </div>
-      ))}
+      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+        {products.map((product) => (
+          <div
+            key={product.id}
+            style={{
+              border: "1px solid #ddd",
+              padding: 15,
+              width: 200,
+              borderRadius: 10
+            }}
+          >
+            <img
+              src={product.image}
+              alt={product.name}
+              width="100%"
+              style={{ borderRadius: 10 }}
+            />
+            <h4>{product.name}</h4>
+            <p>₹{product.price}</p>
+            <button onClick={() => addToCart(product)}>
+              Add to Cart
+            </button>
+          </div>
+        ))}
+      </div>
 
-      {/* CART */}
-      <h2>Cart</h2>
-      {cart.map((item, i) => (
-        <div key={i}>
-          {item.name}
-          <button onClick={() => removeFromCart(i)}>Remove</button>
-        </div>
-      ))}
+      <hr />
 
-      <p>Product Total: ₹{productTotal}</p>
+      <h2>Checkout</h2>
 
-      <input
-        placeholder="6-digit Pincode"
-        value={pincode}
-        onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
-      />
-
-      <p>Delivery Charge: ₹{deliveryCharge}</p>
+      <p><strong>Product Total:</strong> ₹{productTotal}</p>
+      <p><strong>Delivery Charge:</strong> ₹{deliveryCharge}</p>
       <h3>Final Total: ₹{finalTotal}</h3>
 
-      {/* CUSTOMER DETAILS */}
-      <input placeholder="Full Name" onChange={(e)=>setName(e.target.value)} />
-      <input placeholder="Email" onChange={(e)=>setEmail(e.target.value)} />
-      <textarea placeholder="Full Address"
-        onChange={(e)=>setAddress(e.target.value)} />
+      <input
+        type="text"
+        placeholder="Enter 6-digit Pincode"
+        value={pincode}
+        maxLength="6"
+        onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
+        style={{ padding: 8, width: "100%", marginBottom: 10 }}
+      />
 
-      <button onClick={handleOrder}>
-        Pay with UPI
-      </button>
+      <textarea
+        placeholder="Enter Full Delivery Address"
+        value={address}
+        onChange={(e) => setAddress(e.target.value)}
+        style={{ padding: 8, width: "100%", marginBottom: 10 }}
+      />
 
-      {/* ADMIN PANEL */}
-      <hr />
-      <h2>Admin Panel</h2>
-
-      {!adminLogged ? (
+      {finalTotal > 0 && (
         <>
-          <input
-            type="password"
-            placeholder="Admin Password"
-            onChange={(e)=>setAdminPassInput(e.target.value)}
-          />
-          <button onClick={()=>{
-            if(adminPassInput===ADMIN_PASSWORD){
-              setAdminLogged(true)
-            } else {
-              alert("Wrong Password")
-            }
-          }}>Login</button>
-        </>
-      ) : (
-        <>
-          <h3>Delivery Charges</h3>
-          <input
-            type="number"
-            value={metroCharge}
-            onChange={(e)=>setMetroCharge(Number(e.target.value))}
-          /> Metro Charge
-          <br/>
-          <input
-            type="number"
-            value={otherCharge}
-            onChange={(e)=>setOtherCharge(Number(e.target.value))}
-          /> Other India Charge
+          <a href={generateUPILink()}>
+            <button style={{ marginRight: 10 }}>
+              Pay via UPI
+            </button>
+          </a>
 
-          <h3>Orders</h3>
-          {orders.map(order=>(
-            <div key={order.id}>
-              {order.id} - ₹{order.total}
-              <button onClick={()=>downloadInvoice(order)}>
-                Download Invoice
-              </button>
-            </div>
-          ))}
+          <button onClick={sendWhatsApp}>
+            Confirm Order on WhatsApp
+          </button>
         </>
       )}
-
     </div>
   );
 }
