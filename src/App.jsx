@@ -1,164 +1,234 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 export default function App() {
+  const UPI_ID = "sathishshanavi-4@okaxis";
+  const WHATSAPP = "919585191952";
+  const ADMIN_USER = "admin";
+  const ADMIN_PASS = "Hill@123";
+
+  const [products, setProducts] = useState([
+    { id: 1, name: "Nilgiris Tea", price: 250 },
+    { id: 2, name: "Masala Chai", price: 220 }
+  ]);
+
+  const [locations, setLocations] = useState([
+    { name: "Chennai", charge: 40 },
+    { name: "Delhi", charge: 80 }
+  ]);
+
   const [cart, setCart] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState("");
   const [pincode, setPincode] = useState("");
   const [address, setAddress] = useState("");
-  const [orderId, setOrderId] = useState("");
 
-  const products = [
-    {
-      id: 1,
-      name: "Nilgiris Herbal Tea",
-      price: 299,
-      image: "https://images.unsplash.com/photo-1515823064-d6e0c04616a7"
-    },
-    {
-      id: 2,
-      name: "Organic Turmeric Powder",
-      price: 199,
-      image: "https://images.unsplash.com/photo-1604908176997-4310c09fbcdd"
-    },
-    {
-      id: 3,
-      name: "Pure Forest Honey",
-      price: 399,
-      image: "https://images.unsplash.com/photo-1587049352846-4a222e784d38"
-    }
-  ];
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminUser, setAdminUser] = useState("");
+  const [adminPass, setAdminPass] = useState("");
+  const [loggedIn, setLoggedIn] = useState(false);
 
-  const addToCart = (product) => {
-    setCart([...cart, product]);
-  };
+  const [newProduct, setNewProduct] = useState("");
+  const [newPrice, setNewPrice] = useState("");
+  const [newLocation, setNewLocation] = useState("");
+  const [newCharge, setNewCharge] = useState("");
+
+  const addToCart = (product) => setCart([...cart, product]);
+  const clearCart = () => setCart([]);
 
   const productTotal = cart.reduce((sum, item) => sum + item.price, 0);
-
-  // Metro city prefixes (Admin editable)
-  const isMetro =
-    pincode.startsWith("110") || // Delhi
-    pincode.startsWith("400") || // Mumbai
-    pincode.startsWith("560");   // Bangalore
-
   const deliveryCharge =
-    pincode.length === 6
-      ? isMetro
-        ? 40
-        : 80
-      : 0;
+    locations.find((l) => l.name === selectedLocation)?.charge || 0;
+  const finalTotal = productTotal + deliveryCharge;
 
-  const finalTotal =
-    productTotal > 0 ? productTotal + deliveryCharge : 0;
-
-  const generateOrderId = () => {
-    const id = "HC" + Math.floor(100000 + Math.random() * 900000);
-    setOrderId(id);
-    return id;
-  };
-
-  const generateUPILink = () => {
-    const upiID = "sathishshanavi-4@okaxis";
-    return `upi://pay?pa=${upiID}&pn=HillChill&am=${finalTotal}&cu=INR`;
-  };
-
-  const sendWhatsApp = () => {
-    if (!pincode || pincode.length !== 6) {
-      alert("Enter valid 6-digit pincode");
+  const handlePayment = () => {
+    if (!/^[0-9]{6}$/.test(pincode)) {
+      alert("Enter valid 6 digit pincode");
       return;
     }
 
-    if (!address) {
-      alert("Enter delivery address");
+    if (!address || !selectedLocation) {
+      alert("Fill address and select location");
       return;
     }
 
-    const newOrderId = generateOrderId();
+    const upiLink = `upi://pay?pa=${UPI_ID}&pn=Hill%20Chill&am=${finalTotal}&cu=INR`;
 
-    const message = `🛍 Hill & Chill Order
+    const message = `
+🛍 Hill & Chill Order
 
-Order ID: ${newOrderId}
-Total Amount: ₹${finalTotal}
+Products:
+${cart.map((c) => `- ${c.name}`).join("\n")}
+
+Address:
+${address}
 
 Pincode: ${pincode}
-Address: ${address}
+Location: ${selectedLocation}
 
-Payment UPI: sathishshanavi-4@okaxis
+Delivery: ₹${deliveryCharge}
+Total: ₹${finalTotal}
+`;
 
-Thank you for shopping with us!`;
+    const whatsappLink =
+      "https://wa.me/" + WHATSAPP + "?text=" + encodeURIComponent(message);
 
-    window.open(
-      `https://wa.me/919876543210?text=${encodeURIComponent(message)}`,
-      "_blank"
-    );
+    window.open(upiLink);
+    window.open(whatsappLink);
+
+    clearCart();
+  };
+
+  const loginAdmin = () => {
+    if (adminUser === ADMIN_USER && adminPass === ADMIN_PASS) {
+      setLoggedIn(true);
+    } else {
+      alert("Wrong credentials");
+    }
+  };
+
+  const addProduct = () => {
+    if (!newProduct || !newPrice) return;
+    setProducts([
+      ...products,
+      { id: Date.now(), name: newProduct, price: Number(newPrice) }
+    ]);
+    setNewProduct("");
+    setNewPrice("");
+  };
+
+  const deleteProduct = (id) => {
+    setProducts(products.filter((p) => p.id !== id));
+  };
+
+  const addLocation = () => {
+    if (!newLocation || !newCharge) return;
+    setLocations([
+      ...locations,
+      { name: newLocation, charge: Number(newCharge) }
+    ]);
+    setNewLocation("");
+    setNewCharge("");
+  };
+
+  const deleteLocation = (name) => {
+    setLocations(locations.filter((l) => l.name !== name));
   };
 
   return (
     <div style={{ fontFamily: "Arial", padding: 20 }}>
-      <h1>Hill & Chill</h1>
-      <h3>Premium Nilgiris Ingredients</h3>
+      <header style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderBottom: "1px solid #ddd",
+        paddingBottom: 10
+      }}>
+        <h2>🌿 Hill & Chill</h2>
+        <button onClick={() => setShowAdmin(true)}>Admin Login</button>
+      </header>
 
-      <h2>Products</h2>
-      <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-        {products.map((product) => (
-          <div
-            key={product.id}
-            style={{
-              border: "1px solid #ddd",
-              padding: 15,
-              width: 200,
-              borderRadius: 10
-            }}
-          >
-            <img
-              src={product.image}
-              alt={product.name}
-              width="100%"
-              style={{ borderRadius: 10 }}
-            />
-            <h4>{product.name}</h4>
-            <p>₹{product.price}</p>
-            <button onClick={() => addToCart(product)}>
-              Add to Cart
-            </button>
-          </div>
-        ))}
-      </div>
+      <h3 style={{ marginTop: 20 }}>Products</h3>
+      {products.map((p) => (
+        <div key={p.id} style={{ marginBottom: 10 }}>
+          {p.name} - ₹{p.price}
+          <button onClick={() => addToCart(p)} style={{ marginLeft: 10 }}>
+            Add
+          </button>
+        </div>
+      ))}
 
       <hr />
 
-      <h2>Checkout</h2>
+      <h3>Checkout</h3>
+      <p>Product Total: ₹{productTotal}</p>
 
-      <p><strong>Product Total:</strong> ₹{productTotal}</p>
-      <p><strong>Delivery Charge:</strong> ₹{deliveryCharge}</p>
-      <h3>Final Total: ₹{finalTotal}</h3>
+      <select
+        value={selectedLocation}
+        onChange={(e) => setSelectedLocation(e.target.value)}
+      >
+        <option value="">Select Location</option>
+        {locations.map((loc) => (
+          <option key={loc.name}>{loc.name}</option>
+        ))}
+      </select>
+
+      <p>Delivery: ₹{deliveryCharge}</p>
+      <h4>Final Total: ₹{finalTotal}</h4>
 
       <input
-        type="text"
-        placeholder="Enter 6-digit Pincode"
+        placeholder="6 Digit Pincode"
         value={pincode}
-        maxLength="6"
-        onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
-        style={{ padding: 8, width: "100%", marginBottom: 10 }}
+        onChange={(e) => setPincode(e.target.value)}
       />
+      <br /><br />
 
       <textarea
-        placeholder="Enter Full Delivery Address"
+        placeholder="Full Address"
         value={address}
         onChange={(e) => setAddress(e.target.value)}
-        style={{ padding: 8, width: "100%", marginBottom: 10 }}
       />
+      <br /><br />
 
-      {finalTotal > 0 && (
-        <>
-          <a href={generateUPILink()}>
-            <button style={{ marginRight: 10 }}>
-              Pay via UPI
-            </button>
-          </a>
+      <button onClick={handlePayment}>Pay with UPI</button>
+      <button onClick={clearCart} style={{ marginLeft: 10 }}>
+        Clear Cart
+      </button>
 
-          <button onClick={sendWhatsApp}>
-            Confirm Order on WhatsApp
-          </button>
-        </>
+      {showAdmin && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          background: "rgba(0,0,0,0.5)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center"
+        }}>
+          <div style={{ background: "white", padding: 20, width: 300 }}>
+            {!loggedIn ? (
+              <>
+                <h3>Admin Login</h3>
+                <input placeholder="Username" onChange={(e) => setAdminUser(e.target.value)} />
+                <br /><br />
+                <input type="password" placeholder="Password" onChange={(e) => setAdminPass(e.target.value)} />
+                <br /><br />
+                <button onClick={loginAdmin}>Login</button>
+              </>
+            ) : (
+              <>
+                <h3>Admin Panel</h3>
+
+                <h4>Add Product</h4>
+                <input placeholder="Product Name" value={newProduct} onChange={(e) => setNewProduct(e.target.value)} />
+                <input placeholder="Price" value={newPrice} onChange={(e) => setNewPrice(e.target.value)} />
+                <button onClick={addProduct}>Add</button>
+
+                {products.map((p) => (
+                  <div key={p.id}>
+                    {p.name}
+                    <button onClick={() => deleteProduct(p.id)}>Delete</button>
+                  </div>
+                ))}
+
+                <h4>Add Location</h4>
+                <input placeholder="Location" value={newLocation} onChange={(e) => setNewLocation(e.target.value)} />
+                <input placeholder="Delivery Charge" value={newCharge} onChange={(e) => setNewCharge(e.target.value)} />
+                <button onClick={addLocation}>Add</button>
+
+                {locations.map((l) => (
+                  <div key={l.name}>
+                    {l.name}
+                    <button onClick={() => deleteLocation(l.name)}>Delete</button>
+                  </div>
+                ))}
+              </>
+            )}
+
+            <br />
+            <button onClick={() => setShowAdmin(false)}>Close</button>
+          </div>
+        </div>
       )}
     </div>
   );
