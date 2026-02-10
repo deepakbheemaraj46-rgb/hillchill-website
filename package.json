@@ -1,5 +1,5 @@
 {
-  "name": "hillchill-website",
+  "name": "hillchill-ecommerce",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -14,6 +14,6 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^5.0.0"
+    "vite": "^4.4.0"
   }
 }
